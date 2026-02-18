@@ -28,20 +28,42 @@ Implemented modules (real functionality):
 - Data: PostgreSQL + Redis
 - Infra: Docker Compose + Nginx
 
-## Run Locally (Native)
+## Run Locally (No Docker)
+
+Use this mode if PostgreSQL and Redis are installed directly on your machine.
+
+Prerequisites:
+
+- Bun `1.3.5+`
+- Node.js `20+` (for runtime/tooling compatibility)
+- PostgreSQL running on `localhost:5432`
+- Redis running on `localhost:6379`
 
 1. Copy env:
    - `cp .env.example .env`
 2. Install deps:
    - `bun install`
-3. Start data services:
-   - `docker compose up -d postgres redis`
-4. Setup DB:
+3. Ensure local DB + Redis are up:
+   - PostgreSQL should have database `axioma` and valid credentials from `.env`
+   - Redis should accept connections at `redis://localhost:6379`
+4. Setup Prisma:
    - `bun run --filter @axioma/backend prisma:generate`
    - `bun run --filter @axioma/backend prisma:migrate --name init`
    - `bun run --filter @axioma/backend prisma:seed`
-5. Start apps:
+5. Start frontend + backend:
    - `bun run dev`
+
+## Run Locally (Hybrid: App Native + Data via Docker)
+
+If you prefer native app processes but containerized data services:
+
+1. `cp .env.example .env`
+2. `bun install`
+3. `docker compose up -d postgres redis`
+4. `bun run --filter @axioma/backend prisma:generate`
+5. `bun run --filter @axioma/backend prisma:migrate --name init`
+6. `bun run --filter @axioma/backend prisma:seed`
+7. `bun run dev`
 
 Endpoints:
 
@@ -58,9 +80,22 @@ Seed user:
 
 ## Run with Docker (Full Stack)
 
-- `docker compose build --no-cache`
-- `docker compose up -d`
-- Open: `http://localhost:8080`
+Use this mode for production-like local execution (frontend + backend + postgres + redis + nginx).
+
+1. Copy env:
+   - `cp .env.production.example .env.production`
+2. Build images:
+   - `docker compose build --no-cache`
+3. Start stack:
+   - `docker compose up -d`
+4. Open app:
+   - `http://localhost:8080`
+5. Check status/logs:
+   - `docker compose ps`
+   - `docker compose logs -f backend`
+   - `docker compose logs -f frontend`
+6. Stop stack:
+   - `docker compose down`
 
 Containerized behavior:
 
