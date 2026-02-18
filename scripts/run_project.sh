@@ -7,6 +7,7 @@ SKIP_INSTALL="false"
 SKIP_DB_SETUP="false"
 FOLLOW_LOGS="false"
 TMUX_SESSION_NAME="axioma-dev"
+NATIVE_REDIS_AVAILABLE="true"
 
 STARTED_DOCKER_DATA="false"
 
@@ -60,6 +61,33 @@ command_exists() {
 
 docker_daemon_available() {
   command_exists docker && docker info >/dev/null 2>&1
+}
+
+port_in_use() {
+  local port="$1"
+
+  if command_exists ss; then
+    ss -ltn "( sport = :$port )" | grep -q LISTEN
+    return $?
+  fi
+
+  if command_exists lsof; then
+    lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
+find_free_port() {
+  local start_port="$1"
+  local port="$start_port"
+
+  while port_in_use "$port"; do
+    port=$((port + 1))
+  done
+
+  echo "$port"
 }
 
 wait_http() {
@@ -161,8 +189,21 @@ resolve_mode() {
 
   if docker_daemon_available; then
     MODE="docker"
-  else
+  elif command_exists docker; then
+    log "Docker CLI detected but daemon is not accessible (socket permission or service not running)"
+    log "To enable docker mode: sudo usermod -aG docker $USER && newgrp docker"
+    log "Or start daemon/service, then re-run"
+    if command_exists tmux; then
+      MODE="terminals"
+    else
+      MODE="native"
+      log "tmux not found; falling back to native mode"
+    fi
+  elif command_exists tmux; then
     MODE="terminals"
+  else
+    MODE="native"
+    log "tmux not found; falling back to native mode"
   fi
 
   log "Auto mode resolved to: $MODE"
@@ -172,9 +213,27 @@ run_docker_mode() {
   require_cmd docker
   require_cmd curl
 
+  if ! docker_daemon_available; then
+    fail "Docker daemon not accessible. Fix with: sudo usermod -aG docker $USER && newgrp docker (or restart session), then run: bash scripts/run_project.sh --mode docker"
+  fi
+
   title "Axioma Runner - Docker Mode"
+
+  local postgres_port="${POSTGRES_PORT:-5432}"
+  local redis_port="${REDIS_PORT:-6379}"
+
+  if port_in_use "$postgres_port"; then
+    postgres_port="$(find_free_port 55432)"
+    log "Host port 5432 in use; remapping postgres to $postgres_port"
+  fi
+
+  if port_in_use "$redis_port"; then
+    redis_port="$(find_free_port 56379)"
+    log "Host port 6379 in use; remapping redis to $redis_port"
+  fi
+
   log "Starting full Docker stack"
-  (cd "$ROOT_DIR" && docker compose up -d --build)
+  (cd "$ROOT_DIR" && POSTGRES_PORT="$postgres_port" REDIS_PORT="$redis_port" docker compose up -d --build)
 
   log "Waiting for service health endpoints"
   wait_http "http://localhost:8080/nginx-health" 90 2
@@ -186,9 +245,9 @@ run_docker_mode() {
 
   if [[ "$FOLLOW_LOGS" == "true" ]]; then
     log "Streaming Docker logs (Ctrl+C to stop)"
-    (cd "$ROOT_DIR" && docker compose logs -f)
+    (cd "$ROOT_DIR" && POSTGRES_PORT="$postgres_port" REDIS_PORT="$redis_port" docker compose logs -f)
   else
-    (cd "$ROOT_DIR" && docker compose ps)
+    (cd "$ROOT_DIR" && POSTGRES_PORT="$postgres_port" REDIS_PORT="$redis_port" docker compose ps)
   fi
 }
 
@@ -202,25 +261,38 @@ check_native_services() {
     fail "pg_isready not found. Install PostgreSQL client tools for native/terminals mode."
   fi
 
-  if ! command_exists redis-cli; then
-    fail "redis-cli not found. Install Redis tools for native/terminals mode."
-  fi
-
   if ! pg_isready -h localhost -p 5432 >/dev/null 2>&1; then
     fail "PostgreSQL is not reachable on localhost:5432. Start local DB or use --mode docker."
   fi
 
-  if ! redis-cli -u "$redis_url" ping >/dev/null 2>&1; then
-    fail "Redis is not reachable at $redis_url. Start local Redis or use --mode docker."
+  if command_exists redis-cli && redis-cli -u "$redis_url" ping >/dev/null 2>&1; then
+    NATIVE_REDIS_AVAILABLE="true"
+  else
+    NATIVE_REDIS_AVAILABLE="false"
+    log "Redis is not reachable; native run will continue with Redis disabled"
   fi
 
-  log "PostgreSQL and Redis are reachable"
+  log "PostgreSQL is reachable"
   log "DATABASE_URL=$db_url"
+}
+
+run_native_dev_processes() {
+  if [[ "$NATIVE_REDIS_AVAILABLE" == "false" ]]; then
+    log "Starting app with REDIS_URL disabled"
+    (cd "$ROOT_DIR" && REDIS_URL="" bun run dev)
+  else
+    (cd "$ROOT_DIR" && bun run dev)
+  fi
 }
 
 run_terminals_mode() {
   require_cmd bun
-  require_cmd tmux
+
+  if ! command_exists tmux; then
+    log "tmux missing; falling back to native mode"
+    run_native_mode
+    return
+  fi
 
   title "Axioma Runner - Terminal TUI Mode"
 
@@ -240,9 +312,9 @@ run_terminals_mode() {
 
   log "Creating tmux TUI session: $TMUX_SESSION_NAME"
 
-  tmux new-session -d -s "$TMUX_SESSION_NAME" -n frontend "cd '$ROOT_DIR' && bun run dev:frontend"
-  tmux new-window -t "$TMUX_SESSION_NAME" -n backend "cd '$ROOT_DIR' && bun run dev:backend"
-  tmux new-window -t "$TMUX_SESSION_NAME" -n health "cd '$ROOT_DIR' && while true; do clear; echo 'Axioma Health Monitor'; echo '--------------------'; date; echo; pg_isready -h localhost -p 5432 || true; redis-cli -u \"\${REDIS_URL:-redis://localhost:6379}\" ping || true; echo; echo 'Frontend: http://localhost:3000'; echo 'Backend : http://localhost:4000'; sleep 3; done"
+  tmux new-session -d -s "$TMUX_SESSION_NAME" -n frontend "cd '$ROOT_DIR' && if [[ '$NATIVE_REDIS_AVAILABLE' == 'false' ]]; then REDIS_URL='' bun run dev:frontend; else bun run dev:frontend; fi"
+  tmux new-window -t "$TMUX_SESSION_NAME" -n backend "cd '$ROOT_DIR' && if [[ '$NATIVE_REDIS_AVAILABLE' == 'false' ]]; then REDIS_URL='' bun run dev:backend; else bun run dev:backend; fi"
+  tmux new-window -t "$TMUX_SESSION_NAME" -n health "cd '$ROOT_DIR' && while true; do clear; echo 'Axioma Health Monitor'; echo '--------------------'; date; echo; pg_isready -h localhost -p 5432 || true; if command -v redis-cli >/dev/null 2>&1; then redis-cli -u \"\${REDIS_URL:-redis://localhost:6379}\" ping || true; else echo 'redis-cli not installed'; fi; echo; echo 'Frontend: http://localhost:3000'; echo 'Backend : http://localhost:4000'; sleep 3; done"
 
   log "Attaching tmux session (Ctrl+b then d to detach)"
   tmux attach-session -t "$TMUX_SESSION_NAME"
@@ -290,7 +362,7 @@ run_native_mode() {
   log "Ensure local PostgreSQL and Redis match .env values before running"
   log "Frontend: http://localhost:3000"
   log "Backend: http://localhost:4000"
-  (cd "$ROOT_DIR" && bun run dev)
+  run_native_dev_processes
 }
 
 main() {

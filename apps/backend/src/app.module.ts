@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import * as Joi from "joi";
+import Joi from "joi";
 import { HealthController } from "./common/health.controller.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { RedisModule } from "./infrastructure/redis/redis.module.js";
