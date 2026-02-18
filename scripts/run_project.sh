@@ -239,6 +239,13 @@ run_docker_mode() {
   wait_http "http://localhost:8080/nginx-health" 90 2
   wait_http "http://localhost:4000/health/ready" 90 2
 
+  if [[ "$SKIP_DB_SETUP" != "true" ]]; then
+    log "Seeding database for local Docker run"
+    (cd "$ROOT_DIR" && POSTGRES_PORT="$postgres_port" REDIS_PORT="$redis_port" docker compose exec -T backend npx prisma db seed)
+  else
+    log "Skipping database seed in docker mode"
+  fi
+
   log "Project is up"
   log "App URL: http://localhost:8080"
   log "Backend URL: http://localhost:4000"

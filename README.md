@@ -102,6 +102,7 @@ Seed user:
 
 - Email: `owner@axioma.local`
 - Password: `Owner@12345`
+- Docker mode note: the runner seeds this user automatically unless `--skip-db-setup` is passed.
 
 ## Run with Docker (Full Stack)
 

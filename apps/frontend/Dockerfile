@@ -6,6 +6,7 @@ RUN bun install --frozen-lockfile || bun install
 
 FROM deps AS build
 WORKDIR /workspace
+ENV INTERNAL_API_BASE_URL=http://backend:4000
 COPY tsconfig.base.json ./tsconfig.base.json
 COPY apps/frontend ./apps/frontend
 WORKDIR /workspace/apps/frontend
