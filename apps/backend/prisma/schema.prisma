@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String
+  refreshTokenHash String?
+  role         UserRole  @default(OWNER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  partners     Partner[]
+
+  @@map("users")
+}
+
+model Partner {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  name        String
+  shareRatio  Decimal      @db.Decimal(5, 4)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals Withdrawal[]
+
+  @@index([userId])
+  @@map("partners")
+}
+
+model Client {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  invoices    Invoice[]
+  expenses    Expense[]
+
+  @@map("clients")
+}
+
+model Invoice {
+  id            String    @id @default(uuid()) @db.Uuid
+  clientId      String    @db.Uuid
+  amount        Decimal   @db.Decimal(18, 2)
+  issuedAt      DateTime
+  dueAt         DateTime?
+  status        InvoiceStatus @default(ISSUED)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+
+  @@index([clientId])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String    @id @default(uuid()) @db.Uuid
+  invoiceId     String    @db.Uuid
+  amount        Decimal   @db.Decimal(18, 2)
+  receivedAt    DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model Expense {
+  id            String       @id @default(uuid()) @db.Uuid
+  clientId      String?      @db.Uuid
+  category      ExpenseCategory
+  amount        Decimal      @db.Decimal(18, 2)
+  paidAt        DateTime
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
+  @@index([paidAt])
+  @@map("expenses")
+}
+
+model Withdrawal {
+  id            String    @id @default(uuid()) @db.Uuid
+  partnerId     String    @db.Uuid
+  amount        Decimal   @db.Decimal(18, 2)
+  withdrawnAt   DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  partner       Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@index([withdrawnAt])
+  @@map("withdrawals")
+}
+
+model SalarySetting {
+  id            String    @id @default(uuid()) @db.Uuid
+  monthlyTotal  Decimal   @db.Decimal(18, 2)
+  effectiveFrom DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([effectiveFrom])
+  @@map("salary_settings")
+}
+
+model BufferSetting {
+  id                   String    @id @default(uuid()) @db.Uuid
+  fixedMonthlyExpense  Decimal   @db.Decimal(18, 2)
+  bufferMonths         Decimal   @db.Decimal(5, 2)
+  effectiveFrom        DateTime
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([effectiveFrom])
+  @@map("buffer_settings")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum ExpenseCategory {
+  PAYROLL
+  SOFTWARE
+  RENT
+  MARKETING
+  CONTRACTOR
+  OTHER
+}

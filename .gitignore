@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+.bun/
+
+# env
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# build
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# misc
+.DS_Store
+*.log

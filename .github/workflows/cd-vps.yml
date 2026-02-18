@@ -1,0 +1,26 @@
+name: CD VPS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/axioma-local
+            git fetch --all
+            git reset --hard origin/main
+            chmod +x infra/scripts/deploy_vps.sh
+            ./infra/scripts/deploy_vps.sh

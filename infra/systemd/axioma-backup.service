@@ -1,0 +1,7 @@
+[Unit]
+Description=Axioma PostgreSQL Backup Service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/axioma-local/infra/scripts/backup_postgres.sh
