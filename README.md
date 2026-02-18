@@ -28,6 +28,31 @@ Implemented modules (real functionality):
 - Data: PostgreSQL + Redis
 - Infra: Docker Compose + Nginx
 
+## One-Command Project Runner (Recommended)
+
+Use the unified runner script to boot the project with sane defaults:
+
+- `bun run run:project`
+
+Behavior:
+
+- Docker daemon available: runs full stack with Docker Compose (frontend, backend, postgres, redis, nginx)
+- Docker daemon unavailable: falls back to terminal TUI mode (`tmux`) with separate frontend/backend/health terminals
+
+Modes:
+
+- `bun run run:project` (auto: Docker first, terminal TUI fallback)
+- `bun run run:project:docker` (full Docker stack)
+- `bun run run:project:hybrid` (native apps + Docker postgres/redis)
+- `bun run run:project:terminals` (tmux TUI with separate app terminals)
+- `bun run run:project:native` (fully native, requires local postgres/redis)
+
+Runner options (direct script usage):
+
+- `bash scripts/run_project.sh --help`
+- `bash scripts/run_project.sh --mode docker --follow-logs`
+- `bash scripts/run_project.sh --mode native --skip-install --skip-db-setup`
+
 ## Run Locally (No Docker)
 
 Use this mode if PostgreSQL and Redis are installed directly on your machine.

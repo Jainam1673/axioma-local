@@ -8,6 +8,11 @@
     "packages/*"
   ],
   "scripts": {
+    "run:project": "bash scripts/run_project.sh",
+    "run:project:docker": "bash scripts/run_project.sh --mode docker",
+    "run:project:hybrid": "bash scripts/run_project.sh --mode hybrid",
+    "run:project:terminals": "bash scripts/run_project.sh --mode terminals",
+    "run:project:native": "bash scripts/run_project.sh --mode native",
     "dev": "bun run --concurrent dev:backend dev:frontend",
     "dev:backend": "bun run --filter @axioma/backend start:dev",
     "dev:frontend": "bun run --filter @axioma/frontend dev",
