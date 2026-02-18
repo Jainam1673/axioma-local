@@ -28,7 +28,7 @@ export interface DashboardSummary {
 }
 
 export async function getDashboardSummary(accessToken: string): Promise<DashboardSummary> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
   const response = await fetch(`${baseUrl}/dashboard/summary`, {
     method: "GET",

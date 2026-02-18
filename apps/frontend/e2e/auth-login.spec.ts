@@ -36,7 +36,10 @@ test("login success redirects to dashboard", async ({ page }) => {
           runwayHealth: "monitor",
           overdrawn: true,
         },
-        partnerMaxWithdrawal: {},
+        partnerMaxWithdrawal: {
+          partner_a: "0.00",
+          partner_b: "0.00",
+        },
         clientMargin: {},
       }),
     });
@@ -49,6 +52,11 @@ test("login success redirects to dashboard", async ({ page }) => {
 
   await expect(page).toHaveURL("/");
   await expect(page.getByText("Decision Dashboard")).toBeVisible();
+  await expect(page.getByText("Real Net Profit")).toBeVisible();
+  await expect(page.getByText("₹120000").first()).toBeVisible();
+  await expect(page.getByText("Runway Months")).toBeVisible();
+  await expect(page.getByText("2.5")).toBeVisible();
+  await expect(page.getByText("partner_a")).toBeVisible();
 });
 
 test("login failure shows explicit error", async ({ page }) => {

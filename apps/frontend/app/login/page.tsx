@@ -17,7 +17,7 @@ export default function LoginPage(): React.JSX.Element {
     setError(null);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
       const response = await fetch(`${baseUrl}/oauth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

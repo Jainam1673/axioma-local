@@ -16,7 +16,6 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml pull || true
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend bun run prisma:migrate
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend bun run prisma:seed
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
