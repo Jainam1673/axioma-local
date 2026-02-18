@@ -64,6 +64,8 @@ Default seed credentials:
 Health endpoints:
 
 - Backend: `http://localhost:4000/health`
+- Backend liveness: `http://localhost:4000/health/live`
+- Backend readiness: `http://localhost:4000/health/ready`
 - Nginx: `http://localhost:8080/nginx-health`
 
 ## Verification
@@ -110,5 +112,12 @@ curl -X POST http://localhost:4000/oauth/token \
 - Financial calculations are deterministic and decimal-based (no floating-point drift).
 - Controllers are thin; business logic is isolated in `FinancialEngineService`.
 - Redis is wired as first-class infrastructure and used for dashboard response caching.
+- Request tracing is enabled with `x-request-id` propagation and structured HTTP access logs.
 - Docker is optimized with multi-stage builds, non-root runtime users, healthchecks, read-only containers, and no-new-privileges.
 - This is intentionally MVP-focused per project scope; non-MVP ERP/CRM/tax features are excluded.
+
+## Governance & Operations
+
+- Security policy: `SECURITY.md`
+- Deployment and incident runbook: `infra/OPERATIONS.md`
+- Dependency automation: `.github/dependabot.yml`
